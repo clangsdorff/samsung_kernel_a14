@@ -12,6 +12,8 @@
 #include "abox_dbg.h"
 #include "abox_oem.h"
 
+char *bootargs = NULL;
+
 #if IS_ENABLED(CONFIG_SND_SOC_SAMSUNG_ABOX_CHANGE_RMEM_SIZE)
 static int check_ship_version(void)
 {
@@ -25,20 +27,39 @@ static int check_ship_version(void)
 
 char* abox_oem_update_bootargs(struct abox_data *data)
 {
-	char *bootargs = NULL;
 	/* SAMPLE CODE - START*/
 #if IS_ENABLED(CONFIG_SND_SOC_SAMSUNG_ABOX_CHANGE_RMEM_SIZE)
 	char *ptr = strstr(data->bootargs, "vss");
 
-	if (check_debug_level_low() || check_ship_version()) {
-		bootargs = kmalloc(strlen(data->bootargs) + 1, GFP_KERNEL);
+	if ((check_debug_level_low() || check_ship_version()) && bootargs) {
 		memcpy(bootargs, "slog=0 ", 7);
 		memcpy(bootargs + 7, ptr, strlen(ptr) + 1);
+		return bootargs;
 	}
 #endif
-	return bootargs;
+	return NULL;
 	/* SAMPLE CODE - END */
 	/* TO DO: Delete upper code and implement OEM specific code */
+}
+
+void abox_oem_alloc_bootargs(struct abox_data *data)
+{
+#if IS_ENABLED(CONFIG_SND_SOC_SAMSUNG_ABOX_CHANGE_RMEM_SIZE)
+	bootargs = kmalloc(strlen(data->bootargs) + 1, GFP_KERNEL);
+	if (!bootargs) {
+		pr_err("%s : bootargs alloc fail\n", __func__);
+	}
+#endif
+}
+
+void abox_oem_free_bootargs(void)
+{
+#if IS_ENABLED(CONFIG_SND_SOC_SAMSUNG_ABOX_CHANGE_RMEM_SIZE)
+	pr_info("%s\n", __func__);
+	if (bootargs) {
+		kfree(bootargs);
+	}
+#endif
 }
 
 static ssize_t abox_oem_resize_reserved_memory_dbg(void)

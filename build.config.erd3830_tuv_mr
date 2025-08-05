@@ -64,7 +64,7 @@ IN_KERNEL_MODULES=1
 BUILD_BOOT_IMG=1
 KERNEL_BINARY=Image
 
-BUILD_CONFIG=kernel/build.config.erd3830_t
+BUILD_CONFIG=kernel/build.config.erd3830_tuv_mr
 TARGET_DTBO_CFG=board/erd/s5e3830_dtboimg.cfg
 BUILD_INITRAMFS=1
 LZ4_RAMDISK=1

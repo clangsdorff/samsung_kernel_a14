@@ -100,7 +100,7 @@ static struct mmc_blk_ioc_data *mmc_blk_ioctl_copy_from_kernel(
 	struct mmc_blk_ioc_data *idata;
 	int err;
 
-	idata = kmalloc(sizeof(*idata), GFP_NOIO);
+	idata = kzalloc(sizeof(*idata), GFP_NOIO);
 	if (!idata) {
 		err = -ENOMEM;
 		goto out;
@@ -119,7 +119,7 @@ static struct mmc_blk_ioc_data *mmc_blk_ioctl_copy_from_kernel(
 		return idata;
 	}
 
-	idata->buf = kmalloc(idata->buf_bytes, GFP_NOIO);
+	idata->buf = kzalloc(idata->buf_bytes, GFP_NOIO);
 	if (!idata->buf) {
 		err = -ENOMEM;
 		goto idata_err;
@@ -173,6 +173,7 @@ static long mmc_srpmb_access_ioctl(struct mmc_blk_data *md,
 		return PTR_ERR(idata);
 	}
 
+	idata->flags = 0;
 	idata->rpmb = rpmb;
 
 	card = md->queue.card;

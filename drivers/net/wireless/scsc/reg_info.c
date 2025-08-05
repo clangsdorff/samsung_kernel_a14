@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright (c) 2012 - 2021 Samsung Electronics Co., Ltd. All rights reserved
+ * Copyright (c) 2012 - 2024 Samsung Electronics Co., Ltd. All rights reserved
  *
  *****************************************************************************/
 #include "dev.h"
@@ -13,6 +13,9 @@
 MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);
 #endif
 
+#define SLSI_REG_INFO_BUILD_REG_DOM_VER(major, minor, minor2) \
+		(((major & 0xFF) << 16) | ((minor & 0xFF) << 8) | (minor2 & 0xFF))
+
 void slsi_regd_init(struct slsi_dev *sdev)
 {
 	struct ieee80211_regdomain *slsi_world_regdom_custom = sdev->device_config.domain_info.regdomain;
@@ -22,13 +25,13 @@ void slsi_regd_init(struct slsi_dev *sdev)
 		/* Channel 12 - 13 NO_IR*/
 		REG_RULE(2467 - 10, 2472 + 10, 40, 0, 20, NL80211_RRF_NO_IR),
 		/* Channel 36 - 48 */
-		REG_RULE(5180 - 10, 5240 + 10, 80, 0, 20, 0),
+		REG_RULE(5180 - 10, 5240 + 10, 80, 0, 20, NL80211_RRF_NO_IR | NL80211_RRF_AUTO_BW),
 		/* Channel 52 - 64 */
-		REG_RULE(5260 - 10, 5320 + 10, 80, 0, 20, NL80211_RRF_DFS),
+		REG_RULE(5260 - 10, 5320 + 10, 80, 0, 20, NL80211_RRF_NO_IR | NL80211_RRF_DFS | NL80211_RRF_AUTO_BW),
 		/* Channel 100 - 144 */
-		REG_RULE(5500 - 10, 5720 + 10, 80, 0, 20, NL80211_RRF_DFS),
+		REG_RULE(5500 - 10, 5720 + 10, 160, 0, 20, NL80211_RRF_NO_IR | NL80211_RRF_DFS),
 		/* Channel 149 - 165 */
-		REG_RULE(5745 - 10, 5825 + 10, 80, 0, 20, 0),
+		REG_RULE(5745 - 10, 5825 + 10, 80, 0, 20, NL80211_RRF_NO_IR),
 	};
 
 	int                        i;
@@ -88,7 +91,11 @@ int slsi_read_regulatory(struct slsi_dev *sdev)
 	const struct firmware *firm;
 
 	if (sdev->regdb.regdb_state == SLSI_REG_DB_SET) {
-		SLSI_INFO(sdev, "Regulatory is already set\n");
+		SLSI_INFO(sdev, "DB Ver:%d.%d.%d, Num Countries:%d\n", sdev->regdb.db_major_version,
+			  sdev->regdb.db_minor_version, sdev->regdb.db_2nd_minor_version, sdev->regdb.num_countries);
+		sdev->reg_dom_version = SLSI_REG_INFO_BUILD_REG_DOM_VER(sdev->regdb.db_major_version,
+									sdev->regdb.db_minor_version,
+									sdev->regdb.db_2nd_minor_version);
 		return 0;
 	}
 
@@ -103,6 +110,10 @@ int slsi_read_regulatory(struct slsi_dev *sdev)
 		SLSI_INFO(sdev, "Failed to read script version\n");
 		goto exit;
 	}
+	if (script_version > 3) {
+		SLSI_INFO(sdev, "DB unknown script version:%d. Abort DB file read\n", script_version);
+		goto exit;
+	}
 	if (firmware_read(firm, &sdev->regdb.db_major_version, sizeof(uint32_t), &offset) < 0) {
 		SLSI_INFO(sdev, "Failed to read regdb major version %u\n", sdev->regdb.db_major_version);
 		goto exit;
@@ -110,6 +121,15 @@ int slsi_read_regulatory(struct slsi_dev *sdev)
 	if (firmware_read(firm, &sdev->regdb.db_minor_version, sizeof(uint32_t), &offset) < 0) {
 		SLSI_INFO(sdev, "Failed to read regdb minor version %u\n", sdev->regdb.db_minor_version);
 		goto exit;
+	}
+
+	/*2nd minor number is introduced from script version 3 onwards.*/
+	sdev->regdb.db_2nd_minor_version = 0;
+	if (script_version >= 3) {
+		if (firmware_read(firm, &sdev->regdb.db_2nd_minor_version, sizeof(uint32_t), &offset) < 0) {
+			SLSI_INFO(sdev, "Failed to read regdb 2nd minor version %u\n", sdev->regdb.db_minor_version);
+			goto exit;
+		}
 	}
 	if (firmware_read(firm, &num_freqbands, sizeof(uint32_t), &offset) < 0) {
 		SLSI_INFO(sdev, "Failed to read Number of Frequency bands %u\n", num_freqbands);
@@ -182,8 +202,8 @@ int slsi_read_regulatory(struct slsi_dev *sdev)
 		SLSI_ERR(sdev, "Failed to read regdb number of countries\n");
 		goto exit_rules_collection;
 	}
-	SLSI_INFO(sdev, "Regulatory Version: %d.%d , Script Version: %d , Number of Countries: %d\n",
-		  sdev->regdb.db_major_version, sdev->regdb.db_minor_version, script_version,
+	SLSI_INFO(sdev, "DB Ver:%d.%d.%d, Script Ver:%d, Num Countries:%d\n", sdev->regdb.db_major_version,
+		  sdev->regdb.db_minor_version, sdev->regdb.db_2nd_minor_version, script_version,
 		  sdev->regdb.num_countries);
 
 	sdev->regdb.country = kmalloc(sizeof(*sdev->regdb.country) * sdev->regdb.num_countries, GFP_KERNEL);
@@ -213,6 +233,9 @@ int slsi_read_regulatory(struct slsi_dev *sdev)
 
 	mx140_release_file(sdev->maxwell_core, firm);
 	sdev->regdb.regdb_state = SLSI_REG_DB_SET;
+	sdev->reg_dom_version = SLSI_REG_INFO_BUILD_REG_DOM_VER(sdev->regdb.db_major_version,
+								sdev->regdb.db_minor_version,
+								sdev->regdb.db_2nd_minor_version);
 	return 0;
 
 exit_country:

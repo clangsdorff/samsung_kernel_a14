@@ -77,6 +77,7 @@ enum { C2A_ON, C2A_OFF };
 
 #define OS_IMAGE_MULTIOS "os.checked_0.bin"
 #define OS_IMAGE_DEFAULT "os.checked.bin"
+#define CHUB_DEFAULT_NUM_OS (0)
 
 #define SENSOR_VARIATION 10
 

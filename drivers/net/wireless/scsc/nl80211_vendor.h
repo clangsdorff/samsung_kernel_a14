@@ -328,6 +328,9 @@ enum lls_attribute {
 	LLS_ATTRIBUTE_SET_AGGR_STATISTICS_GATHERING,
 	LLS_ATTRIBUTE_CLEAR_STOP_REQUEST_MASK,
 	LLS_ATTRIBUTE_CLEAR_STOP_REQUEST,
+	LLS_ATTRIBUTE_STATS_VERSION,
+	LLS_ATTRIBUTE_GET_STATS_TYPE,
+	LLS_ATTRIBUTE_GET_STATS_STRUCT,
 	LLS_ATTRIBUTE_MAX
 };
 
@@ -362,6 +365,7 @@ enum slsi_hal_vendor_subcmds {
 	SLSI_NL80211_VENDOR_SUBCMD_GET_ROAMING_CAPABILITIES,
 	SLSI_NL80211_VENDOR_SUBCMD_SET_ROAMING_STATE,
 	SLSI_NL80211_VENDOR_SUBCMD_SET_LATENCY_MODE,
+	SLSI_NL80211_VENDOR_SUBCMD_GET_USABLE_CHANNELS,
 	SLSI_NL80211_VENDOR_SUBCMD_SET_DTIM_CONFIG,
 	SLSI_NL80211_VENDOR_SUBCMD_SELECT_TX_POWER_SCENARIO,
 	SLSI_NL80211_VENDOR_SUBCMD_RESET_TX_POWER_SCENARIO,
@@ -660,6 +664,42 @@ enum slsi_wifi_rtt_status {
 	SLSI_RTT_STATUS_FAIL_FTM_PARAM_OVERRIDE /* Responder overrides param info, cannot range with new params */
 };
 
+enum slsi_usable_channel_attr {
+	SLSI_UC_ATTRIBUTE_BAND = 1,
+	SLSI_UC_ATTRIBUTE_IFACE_MODE,
+	SLSI_UC_ATTRIBUTE_FILTER,
+	SLSI_UC_ATTRIBUTE_MAX_NUM,
+	SLSI_UC_ATTRIBUTE_NUM_CHANNELS,
+	SLSI_UC_ATTRIBUTE_CHANNEL_LIST,
+	SLSI_UC_ATTRIBUTE_MAX
+};
+
+enum slsi_uc_band {
+	SLSI_UC_MAC_2_4_BAND = 1 << 0,
+	SLSI_UC_MAC_5_BAND = 1 << 1,
+	SLSI_UC_MAC_6_BAND = 1 << 2,
+	SLSI_UC_MAC_60_0_BAND = 1 << 3
+};
+
+enum slsi_uc_iface_mode {
+	SLSI_UC_ITERFACE_STA = 1 << 0,
+	SLSI_UC_ITERFACE_SOFTAP = 1 << 1,
+	SLSI_UC_ITERFACE_IBSS = 1 << 2,
+	SLSI_UC_ITERFACE_P2P_CLIENT = 1 << 3,
+	SLSI_UC_ITERFACE_P2P_GO = 1 << 4,
+	SLSI_UC_ITERFACE_P2P_NAN = 1 << 5,
+	SLSI_UC_ITERFACE_P2P_MESH = 1 << 6,
+	SLSI_UC_ITERFACE_P2P_TDLS = 1 << 7,
+	SLSI_UC_ITERFACE_UNKNOWN = -1,
+};
+
+enum slsi_uc_filter {
+	SLSI_UC_FILTER_REGULATORY = 0,
+	SLSI_UC_FILTER_CELLULAR_COEX = 1 << 0,
+	SLSI_UC_FILTER_CONCURRENCY = 1 << 1,
+	SLSI_UC_FILTER_NAN_INSTANT_MODE = 1 << 2
+};
+
 enum wifi_dtim_config_attr {
 	SLSI_VENDOR_ATTR_DTIM_MULTIPLIER = 1,
 	SLSI_VENDOR_ATTR_DTIM_MAX
@@ -855,13 +895,25 @@ struct slsi_lls_interface_link_layer_info {
 	u8 bssid[6];                       /* bssid*/
 	u8 ap_country_str[3];              /* country string advertised by AP*/
 	u8 country_str[3];                 /* country string for this association*/
+	u8 time_slicing_duty_cycle_percent;/* if this iface is being served using time slicing
+					    * on a radio with one or more ifaces (i.e MCC),
+					    * then the duty cycle assigned to this iface in %.
+					    * If not using time slicing (i.e SCC or DBS), set to 100. */
 };
 
 /* per peer statistics */
+typedef struct bssload_info {
+	u16 sta_count;                          /* station count*/
+	u16 chan_util;                          /* channel utilization*/
+	u8 PAD[4];
+} bssload_info_t;
+
+/* per peer statistics */
 struct slsi_lls_peer_info {
-	enum slsi_lls_peer_type type;         /* peer type (AP, TDLS, GO etc.)*/
+	enum slsi_lls_peer_type type;     /* peer type (AP, TDLS, GO etc.)*/
 	u8 peer_mac_address[6];           /* mac address*/
 	u32 capabilities;                 /* peer WIFI_CAPABILITY_XXX*/
+	bssload_info_t bssload;           /* STA count and CU*/
 	u32 num_rate;                     /* number of rates*/
 	struct slsi_lls_rate_stat rate_stats[]; /* per rate statistics, number of entries  = num_rate*/
 };
@@ -1065,6 +1117,19 @@ struct slsi_acs_request {
 	u8 hw_mode;
 	u16 ch_width;
 	u8 ch_list_len;
+};
+
+struct slsi_uc_request {
+	u32 band;
+	u32 iface_mode;
+	u32 filter;
+	u32 max_num;
+};
+
+struct slsi_usable_channel {
+	int freq;                           /* channel frequency in MHz */
+	enum slsi_lls_channel_width width;  /* Channel operating width (20, 40, 80, 160, 320 etc.) */
+	u32 iface_mode_mask;                /* BIT MASK represented by slsi_uc_iface_mode */
 };
 
 void slsi_nl80211_vendor_init(struct slsi_dev *sdev);

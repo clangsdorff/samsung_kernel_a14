@@ -26,6 +26,16 @@ enum ABOX_OEM_RESERVED_MEMORY {
 extern char* abox_oem_update_bootargs(struct abox_data *data);
 
 /**
+ * Alloc bootargs
+ */
+extern void abox_oem_alloc_bootargs(struct abox_data *data);
+
+/**
+ * Free bootargs
+ */
+extern void abox_oem_free_bootargs(void);
+
+/**
  * Get OEM changed size of each reserved memory
  * @param[in]	type	type of reserved memory
  * @return	size of the reserved memory which is changed by OEM

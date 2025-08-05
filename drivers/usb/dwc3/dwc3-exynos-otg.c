@@ -797,6 +797,13 @@ static int dwc3_otg_start_gadget(struct otg_fsm *fsm, int on)
 		 */
 		dwc3_exynos_gadget_disconnect_proc(dwc);
 
+		if (dwc->ep0state != EP0_SETUP_PHASE ||
+				atomic_read(&dev->power.usage_count) > 1) {
+			pr_info("usb: %s: dwc->ep0state=%d, dep->flags=%d\n",
+				__func__, dwc->ep0state, dwc->eps[0]->flags);
+			usb_ep_set_halt(&(dwc->eps[0]->endpoint));
+		}
+
 		extra_delay = dwc3_check_extra_work(dwc);
 		if (extra_delay)
 			mdelay(100);

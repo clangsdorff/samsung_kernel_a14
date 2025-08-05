@@ -1467,7 +1467,7 @@
 
 		vframe {
 			compatible = "shared-dma-pool";
-			size = <0x5800000>;
+			size = <0x7c00000>;
 			alignment = <0x00 0x10000>;
 			reusable;
 			phandle = <0x2a>;
@@ -4947,7 +4947,7 @@
 		average_qp = <0x01 0x201030>;
 		mv_search_mode = <0x00 0x201118>;
 		enc_idr_flag = <0x01 0x210614>;
-		min_quality_mode = <0x00 0x210705>;
+		min_quality_mode = <0x01 0x241002>;
 		enc_ts_delta = <0x00 0x211027>;
 		wfd_rc_mode = <0x00 0x00>;
 		support_av1_dec = <0x00>;

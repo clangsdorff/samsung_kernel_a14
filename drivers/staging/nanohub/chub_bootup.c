@@ -449,7 +449,7 @@ static int contexthub_download_image(struct contexthub_ipc_info *chub, int idx)
 	int ret = 0;
 	void *chub_addr = NULL;
 
-	if (!chub->misc.multi_os) {
+	if (!chub->misc.multi_os && idx == CHUB_DEFAULT_NUM_OS) {
 		nanohub_dev_info(chub->dev, "%s: download %s\n", __func__, OS_IMAGE_DEFAULT);
 		ret = request_firmware(&entry, OS_IMAGE_DEFAULT, chub->dev);
 		chub_addr = chub->iomem.sram;

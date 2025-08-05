@@ -3714,6 +3714,8 @@ static int samsung_abox_probe(struct platform_device *pdev)
 
 	pm_runtime_put(dev);
 
+	abox_oem_alloc_bootargs(data);
+
 #if IS_ENABLED(CONFIG_SND_SOC_SAMSUNG_AUDIO)
 #if IS_ENABLED(CONFIG_SAMSUNG_PRODUCT_SHIP)
 	data->debug_mode = DEBUG_MODE_NONE;
@@ -3744,6 +3746,7 @@ static int samsung_abox_remove(struct platform_device *pdev)
 	destroy_workqueue(data->ipc_workqueue);
 	snd_soc_unregister_component(dev);
 	abox_iommu_unmap(dev, IOVA_DRAM_FIRMWARE);
+	abox_oem_free_bootargs();
 
 	return 0;
 }
